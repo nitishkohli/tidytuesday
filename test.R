@@ -1,7 +1,0 @@
-library(tidytuesdayR)
-library(tidyverse)
-library(lubridate)
-
-kids <- tt_load('2020-09-15')$kids
-
-
