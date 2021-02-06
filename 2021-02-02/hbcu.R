@@ -4,6 +4,7 @@ library(scales)
 library(ggfittext)
 library(ggchicklet)
 library(cowplot)
+library(magrittr)
 
 tuesdata <- tidytuesdayR::tt_load('2021-02-02')
 
@@ -18,34 +19,7 @@ hbcu <- hbcu %>%
   select(-All) %>%
   pivot_longer(cols = -c(year, gender), names_to = 'categ')
 
-
-p1 <- hbcu %>%
-  filter(gender != 'total_enrollment') %>%
-  group_by(year, gender) %>%
-  summarise(value = sum(value), .groups = 'drop') %>%
-  mutate(gender = factor(gender, levels = c('males', 'females'))) %>%
-  ggplot(aes(x = as.character(year), y = value, fill = gender,
-             ymin = 0, ymax = value)) +
-  geom_chicklet(position = 'stack') +
-  geom_fit_text(aes(label = label_number_si(accuracy = 1)(value)),
-                position = 'stack', place = 'top',
-                contrast = T, min.size = 3, show.legend = F) +
-  scale_fill_manual(values = c('females' = '#d175b7', 'males' = '#1c2c54')) +
-  theme_classic() +
-  theme(plot.background = element_rect(fill = "#f0f0f0"),
-        panel.background = element_rect(fill = "transparent"),
-        legend.background = element_rect(fill = 'transparent'),
-        legend.title = element_blank(),
-        legend.position = 'top',
-        legend.justification = 'right',
-        legend.margin = margin(t = 0, r = 0, b = -25, l = 0),
-        axis.title = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.line.y = element_blank())
-
-
-p2 <- hbcu %>%
+hbcu %>%
   filter(gender == 'total_enrollment') %>%
   group_by(year, gender) %>%
   mutate(perc = value / sum(value)) %>%
@@ -74,6 +48,23 @@ p2 <- hbcu %>%
         axis.ticks.y = element_blank(),
         axis.line = element_blank())
 
-p1 + p2
+p1 <- tuesdata$bach_students %>%
+  mutate(categ = 'Bach') %>%
+  bind_rows(tuesdata$hs_students) %>%
+  mutate(categ = replace_na(categ, 'HS')) %>%
+  rename(Year = Total) %>%
+  select(-c(matches('Standard Error|percent|Total'))) %>%
+  pivot_longer(cols = -c(Year, categ), names_to = 'Ethnicity', values_to = 'n') %>%
+  mutate(Ethnicity = str_squish(Ethnicity),
+         Ethnicity = str_replace_all(Ethnicity, '[0-9]', ''),
+         n = as.numeric(n) %>% replace_na(0)) %T>%
+  { test <<- . } %>%
+  filter(n != 0) %>%
+  ggplot(aes(x = as.character(Year), y = n, fill = Ethnicity)) +
+  geom_col(color = 'black', position = 'stack') +
+  scale_fill_brewer(palette = 'Greys', direction = -1) +
+  facet_wrap(~categ) +
+  coord_polar(theta = 'x') +
+  theme_void() 
 
-  
+p1
